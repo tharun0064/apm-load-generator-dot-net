@@ -1,0 +1,29 @@
+## .NET ignores
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.DotSettings.user
+
+## Environment files
+.env
+*.env
+
+## Logs
+logs/
+*.log
+
+## New Relic
+newrelic/
+NewRelicAgent_*
+
+## OS
+.DS_Store
+Thumbs.db
+
+## IDE
+.idea/
+*.swp
+*.swo
+*~
