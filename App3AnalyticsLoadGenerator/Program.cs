@@ -20,6 +20,11 @@ var threads = int.Parse(ExpandEnvironmentVariables(config["LoadGenerator:Threads
 var apiPort = ExpandEnvironmentVariables(Environment.GetEnvironmentVariable("API_PORT") ?? "8081");
 var apiBaseUrl = $"http://localhost:{apiPort}";
 
+// Bind Kestrel to the resolved port here (not appsettings.json): ASP.NET config
+// does not expand ${API_PORT} placeholders, which left Kestrel binding a fallback
+// privileged port and failing with "Permission denied".
+builder.WebHost.UseUrls($"http://0.0.0.0:{apiPort}");
+
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
