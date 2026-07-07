@@ -19,8 +19,8 @@ public class CustomerController : ControllerBase
     [Transaction(Web = true)]
     public IActionResult UpdateLoyalty([FromQuery] long customerId, [FromQuery] int points)
     {
-        NewRelic.Api.Agent.NewRelic.AddCustomParameter("customerId", customerId);
-        NewRelic.Api.Agent.NewRelic.AddCustomParameter("points", points);
+        NewRelic.Api.Agent.NewRelic.GetAgent().CurrentTransaction.AddCustomAttribute("customerId", customerId);
+        NewRelic.Api.Agent.NewRelic.GetAgent().CurrentTransaction.AddCustomAttribute("points", points);
 
         try
         {

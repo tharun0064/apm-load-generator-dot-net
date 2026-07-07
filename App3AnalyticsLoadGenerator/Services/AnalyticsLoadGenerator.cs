@@ -17,7 +17,7 @@ public class AnalyticsLoadGenerator
         _numThreads = numThreads;
     }
 
-    [Trace(Dispatcher = true)]
+    [Transaction]
     public void Start()
     {
         Console.WriteLine($"Starting Analytics Load Generator with {_numThreads} threads...");
@@ -32,7 +32,7 @@ public class AnalyticsLoadGenerator
         Task.WaitAll(tasks.ToArray());
     }
 
-    [Trace(Dispatcher = true)]
+    [Transaction]
     private async Task RunWorker(int threadId)
     {
         var client = _httpClientFactory.CreateClient();

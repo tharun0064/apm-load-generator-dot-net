@@ -4,7 +4,7 @@ namespace App2AnalyticsLoadGenerator.Services;
 
 public class DatabaseManager : IDisposable
 {
-    private readonly string _connectionString;
+    private string _connectionString;
     private readonly int _maxPoolSize;
     private readonly int _minPoolSize;
 

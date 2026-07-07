@@ -33,8 +33,8 @@ public class OrderController : ControllerBase
     [Transaction(Web = true)]
     public ActionResult<Dictionary<string, object>> CreateOrder([FromQuery] long customerId, [FromQuery] int numItems)
     {
-        NewRelic.Api.Agent.NewRelic.AddCustomParameter("customerId", customerId);
-        NewRelic.Api.Agent.NewRelic.AddCustomParameter("numItems", numItems);
+        NewRelic.Api.Agent.NewRelic.GetAgent().CurrentTransaction.AddCustomAttribute("customerId", customerId);
+        NewRelic.Api.Agent.NewRelic.GetAgent().CurrentTransaction.AddCustomAttribute("numItems", numItems);
 
         try
         {

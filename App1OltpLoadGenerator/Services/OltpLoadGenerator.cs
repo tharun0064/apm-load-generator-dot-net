@@ -18,7 +18,7 @@ public class OltpLoadGenerator
         _numThreads = numThreads;
     }
 
-    [Trace(Dispatcher = true)]
+    [Transaction]
     public void Start()
     {
         Console.WriteLine($"Starting OLTP Load Generator with {_numThreads} threads...");
@@ -33,7 +33,7 @@ public class OltpLoadGenerator
         Task.WaitAll(tasks.ToArray());
     }
 
-    [Trace(Dispatcher = true)]
+    [Transaction]
     private async Task RunWorker(int threadId)
     {
         var client = _httpClientFactory.CreateClient();

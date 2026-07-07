@@ -5,7 +5,7 @@ namespace App1OltpLoadGenerator.Services;
 
 public class DatabaseManager : IDisposable
 {
-    private readonly string _connectionString;
+    private string _connectionString;
     private readonly int _maxPoolSize;
     private readonly int _minPoolSize;
     private readonly ILogger<DatabaseManager>? _logger;
