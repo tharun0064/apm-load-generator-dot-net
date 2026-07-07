@@ -148,8 +148,8 @@ public class TableCleanupService
         using (var cmd = conn.CreateCommand())
         {
             cmd.CommandText = @"
-                INSERT INTO INVENTORY (inventory_id, product_id, quantity_available, quantity_reserved, reorder_level, last_updated)
-                VALUES (inventory_seq.NEXTVAL, :product_id, :quantity_available, 0, :reorder_level, CURRENT_TIMESTAMP)";
+                INSERT INTO INVENTORY (inventory_id, product_id, quantity_available, quantity_reserved, reorder_level)
+                VALUES (inventory_seq.NEXTVAL, :product_id, :quantity_available, 0, :reorder_level)";
 
             cmd.Parameters.Add("product_id", OracleDbType.Int64);
             cmd.Parameters.Add("quantity_available", OracleDbType.Int32);

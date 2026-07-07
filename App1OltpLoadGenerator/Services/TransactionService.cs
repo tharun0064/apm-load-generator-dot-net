@@ -19,13 +19,14 @@ public class TransactionService
         using var cmd = conn.CreateCommand();
         cmd.CommandTimeout = 60;
 
+        // TRANSACTIONS has no payment_method column (that lives on ORDERS); paymentMethod is
+        // accepted for API compatibility but not persisted here.
         cmd.CommandText = @"
-            INSERT INTO TRANSACTIONS (transaction_id, order_id, amount, payment_method, payment_gateway, transaction_type, status, processed_at)
-            VALUES (transaction_seq.NEXTVAL, :orderId, :amount, :paymentMethod, :paymentGateway, 'PAYMENT', 'COMPLETED', CURRENT_TIMESTAMP)";
+            INSERT INTO TRANSACTIONS (transaction_id, order_id, amount, payment_gateway, transaction_type, status, processed_at)
+            VALUES (transaction_seq.NEXTVAL, :orderId, :amount, :paymentGateway, 'PAYMENT', 'COMPLETED', CURRENT_TIMESTAMP)";
 
         cmd.Parameters.Add("orderId", OracleDbType.Int64).Value = orderId;
         cmd.Parameters.Add("amount", OracleDbType.Decimal).Value = amount;
-        cmd.Parameters.Add("paymentMethod", OracleDbType.Varchar2).Value = paymentMethod;
         cmd.Parameters.Add("paymentGateway", OracleDbType.Varchar2).Value = paymentGateway;
 
         cmd.ExecuteNonQuery();
