@@ -21,14 +21,29 @@ enable_newrelic() {
     local app_dir="${1:-$PWD}"
     local nr_home nr_profiler
 
-    # Locate the agent home and profiler by search rather than a hardcoded
+    # Locate the agent home by search rather than a hardcoded
     # bin/Debug/net8.0/newrelic path, so this survives Debug/Release and
     # TFM/RID changes.
     nr_home=$(find "$app_dir/bin" -type d -name newrelic 2>/dev/null | head -1)
-    nr_profiler=$(find "$app_dir/bin" -name libNewRelicProfiler.so 2>/dev/null | head -1)
 
-    if [ -z "$nr_home" ] || [ -z "$nr_profiler" ]; then
-        echo "WARNING: New Relic agent files not found under $app_dir/bin — build the app first. APM disabled."
+    if [ -z "$nr_home" ]; then
+        echo "WARNING: New Relic agent home not found under $app_dir/bin — build the app first. APM disabled."
+        return 1
+    fi
+
+    # Use the profiler that sits directly in the agent home (this is the one that
+    # matches CORECLR_NEWRELIC_HOME and its adjacent Core/extensions). Only fall
+    # back to an arch subdir copy if the root one is missing. A bare
+    # `find ... | head -1` is non-deterministic and can grab a subdir copy that
+    # fails to initialize (no profiler log, agent never connects).
+    if [ -f "$nr_home/libNewRelicProfiler.so" ]; then
+        nr_profiler="$nr_home/libNewRelicProfiler.so"
+    else
+        nr_profiler=$(find "$nr_home" -name libNewRelicProfiler.so 2>/dev/null | head -1)
+    fi
+
+    if [ -z "$nr_profiler" ]; then
+        echo "WARNING: libNewRelicProfiler.so not found under $nr_home — build the app first. APM disabled."
         return 1
     fi
 
