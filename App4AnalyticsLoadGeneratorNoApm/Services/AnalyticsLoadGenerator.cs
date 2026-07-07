@@ -1,5 +1,3 @@
-using NewRelic.Api.Agent;
-
 namespace App2AnalyticsLoadGenerator.Services;
 
 public class AnalyticsLoadGenerator
@@ -96,7 +94,6 @@ public class AnalyticsLoadGenerator
         }
     }
 
-    [Trace]
     private async Task CallCustomerDataAPI(HttpClient client)
     {
         try
@@ -107,7 +104,6 @@ public class AnalyticsLoadGenerator
         catch (Exception) { }
     }
 
-    [Trace]
     private async Task CallSalesAnalyticsAPI(HttpClient client)
     {
         string[] endpoints = { "daily-sales", "monthly-sales", "top-products", "revenue-by-payment" };
@@ -121,7 +117,6 @@ public class AnalyticsLoadGenerator
         catch (Exception) { }
     }
 
-    [Trace]
     private async Task CallCustomerAnalyticsAPI(HttpClient client)
     {
         string[] endpoints = { "customer-segmentation", "customer-ltv", "retention-rate", "purchase-frequency" };
@@ -135,7 +130,6 @@ public class AnalyticsLoadGenerator
         catch (Exception) { }
     }
 
-    [Trace]
     private async Task CallProductAnalyticsAPI(HttpClient client)
     {
         string[] endpoints = { "product-performance", "inventory-turnover", "slow-moving", "profit-margin", "affinity", "revenue-growth" };
@@ -149,7 +143,6 @@ public class AnalyticsLoadGenerator
         catch (Exception) { }
     }
 
-    [Trace]
     private async Task CallReportingAPI(HttpClient client)
     {
         string[] endpoints = { "executive-dashboard", "sales-report", "inventory-report", "customer-report", "transaction-report" };
@@ -163,7 +156,6 @@ public class AnalyticsLoadGenerator
         catch (Exception) { }
     }
 
-    [Trace]
     private async Task CallDataWarehouseAPI(HttpClient client)
     {
         string[] endpoints = { "aggregate-sales", "aggregate-customers", "aggregate-products", "full-table-scan", "complex-join" };

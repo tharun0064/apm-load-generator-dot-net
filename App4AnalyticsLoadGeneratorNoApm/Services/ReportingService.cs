@@ -1,5 +1,4 @@
 using Oracle.ManagedDataAccess.Client;
-using NewRelic.Api.Agent;
 
 namespace App2AnalyticsLoadGenerator.Services;
 
@@ -12,7 +11,6 @@ public class ReportingService
         _dbManager = dbManager;
     }
 
-    [Trace]
     public void GenerateExecutiveDashboard()
     {
         string sql = @"

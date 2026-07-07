@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using App2AnalyticsLoadGenerator.Services;
-using NewRelic.Api.Agent;
 
 namespace App2AnalyticsLoadGenerator.Controllers;
 
@@ -32,7 +31,6 @@ public class AnalyticsController : ControllerBase
     }
 
     [HttpGet("analytics/customer-data")]
-    [Transaction(Web = true)]
     public IActionResult GetCustomerData()
     {
         try
@@ -42,13 +40,11 @@ public class AnalyticsController : ControllerBase
         }
         catch (Exception ex)
         {
-            NewRelic.Api.Agent.NewRelic.NoticeError(ex);
             return StatusCode(500, new { error = ex.Message });
         }
     }
 
     [HttpGet("analytics/sales/{operation}")]
-    [Transaction(Web = true)]
     public IActionResult GetSalesAnalytics(string operation)
     {
         try
@@ -66,13 +62,11 @@ public class AnalyticsController : ControllerBase
         }
         catch (Exception ex)
         {
-            NewRelic.Api.Agent.NewRelic.NoticeError(ex);
             return StatusCode(500, new { error = ex.Message });
         }
     }
 
     [HttpGet("analytics/customer/{operation}")]
-    [Transaction(Web = true)]
     public IActionResult GetCustomerAnalytics(string operation)
     {
         try
@@ -85,13 +79,11 @@ public class AnalyticsController : ControllerBase
         }
         catch (Exception ex)
         {
-            NewRelic.Api.Agent.NewRelic.NoticeError(ex);
             return StatusCode(500, new { error = ex.Message });
         }
     }
 
     [HttpGet("analytics/product/{operation}")]
-    [Transaction(Web = true)]
     public IActionResult GetProductAnalytics(string operation)
     {
         try
@@ -104,13 +96,11 @@ public class AnalyticsController : ControllerBase
         }
         catch (Exception ex)
         {
-            NewRelic.Api.Agent.NewRelic.NoticeError(ex);
             return StatusCode(500, new { error = ex.Message });
         }
     }
 
     [HttpGet("reporting/{operation}")]
-    [Transaction(Web = true)]
     public IActionResult GetReporting(string operation)
     {
         try
@@ -123,13 +113,11 @@ public class AnalyticsController : ControllerBase
         }
         catch (Exception ex)
         {
-            NewRelic.Api.Agent.NewRelic.NoticeError(ex);
             return StatusCode(500, new { error = ex.Message });
         }
     }
 
     [HttpPost("warehouse/{operation}")]
-    [Transaction(Web = true)]
     public IActionResult GetDataWarehouse(string operation)
     {
         try
@@ -147,7 +135,6 @@ public class AnalyticsController : ControllerBase
         }
         catch (Exception ex)
         {
-            NewRelic.Api.Agent.NewRelic.NoticeError(ex);
             return StatusCode(500, new { error = ex.Message });
         }
     }

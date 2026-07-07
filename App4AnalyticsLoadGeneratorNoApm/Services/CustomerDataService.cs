@@ -1,5 +1,4 @@
 using Oracle.ManagedDataAccess.Client;
-using NewRelic.Api.Agent;
 
 namespace App2AnalyticsLoadGenerator.Services;
 
@@ -12,7 +11,6 @@ public class CustomerDataService
         _dbManager = dbManager;
     }
 
-    [Trace]
     public List<Dictionary<string, object>> GetCustomerAnalytics()
     {
         // This is the HEAVIEST query (5-10 seconds) - preserve exact Oracle SQL

@@ -52,13 +52,18 @@ cp .env.example .env
 # Edit .env with your DB credentials and New Relic license key
 ```
 
-3. **Run**:
+3. **Run** (use the provided `run.sh` — it builds, enables the New Relic agent, then launches):
 ```bash
-dotnet restore
-dotnet run
+./run.sh
 ```
 
-Repeat for App2, App3, App4.
+Repeat for App2, App3, App4 — or start all four with `./runAllApps.sh` from the repo root.
+
+> **Do not** just `dotnet run` by hand for Apps 1/2/3. The New Relic .NET agent
+> only attaches when the CoreCLR profiler environment variables are set (see
+> [New Relic .NET Agent](#new-relic-net-agent) below). `run.sh` / `runAllApps.sh`
+> set them for you; a bare `dotnet run` ships the agent binaries but instruments
+> nothing.
 
 ## Configuration
 
@@ -81,7 +86,39 @@ NEW_RELIC_LICENSE_KEY=your_license_key
 NEW_RELIC_APP_NAME=App1-OLTP-LoadGenerator-DotNet
 ```
 
-Also update `newrelic.config` with your license key (Apps 1/2/3 only).
+The `NEW_RELIC_LICENSE_KEY` and `NEW_RELIC_APP_NAME` environment variables
+override `newrelic.config`, so the `REPLACE_WITH_LICENSE_KEY` placeholder in the
+config can be left as-is — the license key from `.env` is what actually
+authenticates the agent. `newrelic.config` is still used for tracer settings
+(transaction/database tracing, distributed tracing).
+
+## New Relic .NET Agent
+
+Apps 1/2/3 reference the `NewRelic.Agent` NuGet package, which places the agent
+and CoreCLR profiler in each app's build output under a `newrelic/` folder. The
+.NET runtime only loads that profiler when these environment variables are set:
+
+```bash
+CORECLR_ENABLE_PROFILING=1
+CORECLR_PROFILER={36032161-FFC0-4B61-B559-F6C5D41BAE5A}
+CORECLR_NEWRELIC_HOME=<app>/bin/.../newrelic
+CORECLR_PROFILER_PATH=<app>/bin/.../newrelic/libNewRelicProfiler.so
+NEW_RELIC_LICENSE_KEY=<your key>
+NEW_RELIC_APP_NAME=<app name>
+```
+
+You don't set these by hand — `run.sh` (per app) and `runAllApps.sh` (all apps)
+build the app, locate the profiler in the build output, copy the app's
+`newrelic.config` into place, and export the variables before launching. The
+shared logic lives in [`newrelic-env.sh`](newrelic-env.sh) (`enable_newrelic` /
+`disable_newrelic`).
+
+**Platform:** the profiler bundled/used here is Linux (`libNewRelicProfiler.so`).
+The New Relic .NET agent supports Linux and Windows, **not macOS** — on macOS the
+run scripts will print a warning and start the app without APM.
+
+**App4** is deliberately **not** instrumented (no NuGet packages, no profiler env
+vars) so it serves as a no-APM baseline for overhead comparison.
 
 ## Key Features
 

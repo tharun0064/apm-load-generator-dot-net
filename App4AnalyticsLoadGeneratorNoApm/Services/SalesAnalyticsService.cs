@@ -1,5 +1,4 @@
 using Oracle.ManagedDataAccess.Client;
-using NewRelic.Api.Agent;
 
 namespace App2AnalyticsLoadGenerator.Services;
 
@@ -12,7 +11,6 @@ public class SalesAnalyticsService
         _dbManager = dbManager;
     }
 
-    [Trace]
     public void GetDailySalesSummary()
     {
         string sql = @"
@@ -28,7 +26,6 @@ public class SalesAnalyticsService
         ExecuteQuery(sql, "DailySalesSummary");
     }
 
-    [Trace]
     public void GetMonthlySalesSummary()
     {
         string sql = @"

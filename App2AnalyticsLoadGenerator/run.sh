@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Always operate from this script's directory (the app directory)
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
+
 # Load environment variables from .env file
 if [ -f .env ]; then
     echo "Loading environment variables from .env file..."
@@ -32,11 +36,14 @@ if ! command -v dotnet &> /dev/null; then
     exit 1
 fi
 
-# Restore dependencies if needed
-if [ ! -d "bin" ] || [ ! -d "obj" ]; then
-    echo "Restoring dependencies..."
-    dotnet restore
-fi
+# Build first so the New Relic agent files exist in the output before we
+# locate the profiler and launch.
+echo "Building..."
+dotnet build
+
+# Enable the New Relic .NET agent (CoreCLR profiler) for this app
+source "$SCRIPT_DIR/../newrelic-env.sh"
+enable_newrelic "$SCRIPT_DIR"
 
 # Run the application
 echo "Starting App2 Analytics Load Generator..."
@@ -46,7 +53,7 @@ echo ""
 # Redirect logs to file if LOG_FILE is set, otherwise to console
 if [ -n "$LOG_FILE" ]; then
     echo "Logs will be written to: $LOG_FILE"
-    dotnet run 2>&1 | tee -a "$LOG_FILE"
+    dotnet run --no-build 2>&1 | tee -a "$LOG_FILE"
 else
-    dotnet run
+    dotnet run --no-build
 fi

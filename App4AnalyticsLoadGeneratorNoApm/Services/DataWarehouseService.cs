@@ -1,5 +1,4 @@
 using Oracle.ManagedDataAccess.Client;
-using NewRelic.Api.Agent;
 
 namespace App2AnalyticsLoadGenerator.Services;
 
@@ -12,7 +11,6 @@ public class DataWarehouseService
         _dbManager = dbManager;
     }
 
-    [Trace]
     public void AggregateSalesData()
     {
         string sql = @"
@@ -37,7 +35,6 @@ public class DataWarehouseService
         ExecuteUpdate(sql, "AggregateSalesData");
     }
 
-    [Trace]
     public void PerformComplexJoinQuery()
     {
         string sql = @"

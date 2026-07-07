@@ -19,6 +19,9 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Repo root (this script's directory), used to locate the New Relic helper
+ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 # Stop mode
 if [[ "$1" == "--stop" ]]; then
     echo "=========================================="
@@ -164,94 +167,42 @@ fi
 echo -e "${GREEN}✓ All .env files found${NC}"
 echo ""
 
-# Start App1
-echo "=========================================="
-echo "Starting App1 (OLTP Load Generator)"
-echo "=========================================="
-cd "$APP1_DIR"
+# Helper: build an app, then launch it in an isolated subshell so the New Relic
+# profiler environment variables never leak between apps. Pass apm=yes to attach
+# the agent (Apps 1-3); apm=no leaves the app uninstrumented (App4 baseline).
+# Usage: start_app <dir> <port> <yes|no>
+start_app() {
+    local dir="$1" port="$2" apm="$3"
+    echo "=========================================="
+    echo "Starting $dir (APM: $apm)"
+    echo "=========================================="
 
-# Load environment variables
-if [ -f .env ]; then
-    export $(cat .env | grep -v '^#' | xargs)
-fi
+    if ( cd "$ROOT_DIR/$dir" && dotnet build > /dev/null 2>&1 ); then
+        (
+            cd "$ROOT_DIR/$dir"
+            [ -f .env ] && export $(cat .env | grep -v '^#' | xargs)
+            if [ "$apm" = "yes" ]; then
+                source "$ROOT_DIR/newrelic-env.sh"
+                enable_newrelic "$PWD" || true
+            fi
+            exec dotnet run --no-build > /dev/null 2>&1
+        ) &
+        local pid=$!
+        echo -e "${BLUE}Started $dir with PID: $pid (Port: $port)${NC}"
+    else
+        echo -e "${RED}✗ Build failed for $dir — not started${NC}"
+    fi
+    echo ""
+}
 
-# Start in background
-nohup dotnet run > /dev/null 2>&1 &
-APP1_PID=$!
-echo -e "${BLUE}Started App1 with PID: $APP1_PID${NC}"
-echo "  Port: 8080"
-echo "  Database: ${DB_USERNAME}@${DB_HOST}:${DB_PORT}/${DB_SERVICE_NAME}"
-cd ..
-echo ""
-
-# Wait a moment before starting App2
+# Apps 1-3 are instrumented with New Relic; App4 is the no-APM baseline.
+start_app "$APP1_DIR" 8080 yes
 sleep 3
-
-# Start App2
-echo "=========================================="
-echo "Starting App2 (Analytics Load Generator)"
-echo "=========================================="
-cd "$APP2_DIR"
-
-# Load environment variables
-if [ -f .env ]; then
-    export $(cat .env | grep -v '^#' | xargs)
-fi
-
-# Start in background
-nohup dotnet run > /dev/null 2>&1 &
-APP2_PID=$!
-echo -e "${BLUE}Started App2 with PID: $APP2_PID${NC}"
-echo "  Port: 8081"
-echo "  Database: ${DB_USERNAME}@${DB_HOST}:${DB_PORT}/${DB_SERVICE_NAME}"
-cd ..
-echo ""
-
-# Wait a moment before starting App3
+start_app "$APP2_DIR" 8081 yes
 sleep 3
-
-# Start App3
-echo "=========================================="
-echo "Starting App3 (Analytics Load Generator 3)"
-echo "=========================================="
-cd "$APP3_DIR"
-
-# Load environment variables
-if [ -f .env ]; then
-    export $(cat .env | grep -v '^#' | xargs)
-fi
-
-# Start in background
-nohup dotnet run > /dev/null 2>&1 &
-APP3_PID=$!
-echo -e "${BLUE}Started App3 with PID: $APP3_PID${NC}"
-echo "  Port: 8082"
-echo "  Database: ${DB_USERNAME}@${DB_HOST}:${DB_PORT}/${DB_SERVICE_NAME}"
-cd ..
-echo ""
-
-# Wait a moment before starting App4
+start_app "$APP3_DIR" 8082 yes
 sleep 3
-
-# Start App4
-echo "=========================================="
-echo "Starting App4 (Analytics No APM)"
-echo "=========================================="
-cd "$APP4_DIR"
-
-# Load environment variables
-if [ -f .env ]; then
-    export $(cat .env | grep -v '^#' | xargs)
-fi
-
-# Start in background
-nohup dotnet run > /dev/null 2>&1 &
-APP4_PID=$!
-echo -e "${BLUE}Started App4 with PID: $APP4_PID${NC}"
-echo "  Port: 8083"
-echo "  Database: ${DB_USERNAME}@${DB_HOST}:${DB_PORT}/${DB_SERVICE_NAME}"
-cd ..
-echo ""
+start_app "$APP4_DIR" 8083 no
 
 # Wait for apps to start
 echo "Waiting for applications to initialize..."
