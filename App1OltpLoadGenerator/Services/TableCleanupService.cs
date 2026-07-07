@@ -21,9 +21,9 @@ public class TableCleanupService
         using var cmd = conn.CreateCommand();
         cmd.CommandTimeout = 180; // 3 minutes
 
+        // 1. Disable foreign key constraints (best-effort)
         try
         {
-            // 1. Disable foreign key constraints
             Console.WriteLine("Disabling foreign key constraints...");
             cmd.CommandText = @"
                 BEGIN
@@ -32,18 +32,36 @@ public class TableCleanupService
                     END LOOP;
                 END;";
             cmd.ExecuteNonQuery();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"  Could not disable foreign key constraints (continuing): {ex.Message}");
+        }
 
-            // 2. Truncate tables in correct order (respecting dependencies)
-            Console.WriteLine("Truncating tables...");
-            string[] tables = { "ORDER_ITEMS", "TRANSACTIONS", "ORDERS", "SESSION_DATA", "AUDIT_LOG", "INVENTORY", "CUSTOMERS", "PRODUCTS" };
-            foreach (var table in tables)
+        // 2. Truncate tables in dependency order. Best-effort: a table that is
+        //    momentarily locked by another session (ORA-00054) is logged and
+        //    skipped so startup is never blocked; the next cleanup cycle retries.
+        Console.WriteLine("Truncating tables...");
+        string[] tables = { "ORDER_ITEMS", "TRANSACTIONS", "ORDERS", "SESSION_DATA", "AUDIT_LOG", "INVENTORY", "CUSTOMERS", "PRODUCTS" };
+        int truncated = 0;
+        foreach (var table in tables)
+        {
+            try
             {
                 cmd.CommandText = $"TRUNCATE TABLE {table}";
                 cmd.ExecuteNonQuery();
+                truncated++;
                 Console.WriteLine($"  Truncated {table}");
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"  Failed to truncate {table} (continuing): {ex.Message}");
+            }
+        }
 
-            // 3. Re-enable foreign key constraints
+        // 3. Re-enable foreign key constraints (best-effort)
+        try
+        {
             Console.WriteLine("Re-enabling foreign key constraints...");
             cmd.CommandText = @"
                 BEGIN
@@ -52,17 +70,24 @@ public class TableCleanupService
                     END LOOP;
                 END;";
             cmd.ExecuteNonQuery();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"  Could not re-enable foreign key constraints (continuing): {ex.Message}");
+        }
 
-            // 4. Repopulate seed data
+        Console.WriteLine($"Table cleanup completed: {truncated}/{tables.Length} tables truncated");
+
+        // 4. Repopulate seed data (best-effort — never block startup)
+        try
+        {
             Console.WriteLine("Repopulating seed data...");
             RepopulateSeedData(conn);
-
             Console.WriteLine("Table cleanup and rebuild completed successfully");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error during table cleanup: {ex.Message}");
-            throw;
+            Console.WriteLine($"Error repopulating seed data (continuing): {ex.Message}");
         }
     }
 
