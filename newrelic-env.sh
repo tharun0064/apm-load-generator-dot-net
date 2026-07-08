@@ -57,9 +57,17 @@ enable_newrelic() {
     export CORECLR_NEWRELIC_HOME="$nr_home"
     export CORECLR_PROFILER_PATH="$nr_profiler"
 
+    # Do not write agent/profiler logs to disk. The profiler otherwise creates a
+    # NewRelic.Profiler.<pid>.log per launch (one per restart) that never gets
+    # cleaned up and fills the disk. NEW_RELIC_LOG_ENABLED=false is the master
+    # switch that stops both agent and profiler file logging. Set to "true" to
+    # re-enable when you need to diagnose the agent.
+    export NEW_RELIC_LOG_ENABLED=false
+
     echo "New Relic .NET agent enabled: $nr_home"
 }
 
 disable_newrelic() {
-    unset CORECLR_ENABLE_PROFILING CORECLR_PROFILER CORECLR_NEWRELIC_HOME CORECLR_PROFILER_PATH
+    unset CORECLR_ENABLE_PROFILING CORECLR_PROFILER CORECLR_NEWRELIC_HOME \
+          CORECLR_PROFILER_PATH NEW_RELIC_LOG_ENABLED
 }
