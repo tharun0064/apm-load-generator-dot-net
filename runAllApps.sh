@@ -1,276 +1,178 @@
 #!/bin/bash
+#
+# Run / stop / check the .NET APM load-generator apps.
+#
+#   ./runAllApps.sh            Start all apps in the background
+#   ./runAllApps.sh --status   Show which apps are running (APM / port / PID)
+#   ./runAllApps.sh --stop     Stop all apps
+#
+# Apps 1-3 are instrumented with the New Relic .NET agent; App4 is the
+# no-APM baseline. Each app's HTTP port is read from its own .env (API_PORT).
 
-# Script to run all load generator applications
-# Usage: ./runAllApps.sh         - Start all apps in background
-#        ./runAllApps.sh --stop   - Stop all apps
-#        ./runAllApps.sh --status - Check status of all apps
-
-set -e
-
-APP1_DIR="App1OltpLoadGenerator"
-APP2_DIR="App2AnalyticsLoadGenerator"
-APP3_DIR="App3AnalyticsLoadGenerator"
-APP4_DIR="App4AnalyticsLoadGeneratorNoApm"
-
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# Repo root (this script's directory), used to locate the New Relic helper
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$ROOT_DIR"
 
-# Stop mode
-if [[ "$1" == "--stop" ]]; then
-    echo "=========================================="
-    echo "Stopping All Applications"
-    echo "=========================================="
+# Colors
+RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[1;33m'
+CYAN=$'\033[0;36m'; BOLD=$'\033[1m'; NC=$'\033[0m'
 
-    echo -e "${YELLOW}Stopping App1 (OLTP)...${NC}"
-    pkill -f 'dotnet.*App1OltpLoadGenerator' && echo -e "${GREEN}✓ App1 stopped${NC}" || echo -e "${YELLOW}⚠ App1 not running${NC}"
+# App registry: "dir|label|apm(yes|no)"
+APPS=(
+  "App1OltpLoadGenerator|OLTP Load Generator|yes"
+  "App2AnalyticsLoadGenerator|Analytics Load Generator|yes"
+  "App3AnalyticsLoadGenerator|Analytics Load Generator #3|yes"
+  "App4AnalyticsLoadGeneratorNoApm|Analytics (No-APM baseline)|no"
+)
 
-    echo -e "${YELLOW}Stopping App2 (Analytics)...${NC}"
-    pkill -f 'dotnet.*App2AnalyticsLoadGenerator' && echo -e "${GREEN}✓ App2 stopped${NC}" || echo -e "${YELLOW}⚠ App2 not running${NC}"
+hr()    { printf '%s\n' "──────────────────────────────────────────────────────────────────"; }
+title() { printf '\n%s%s%s\n' "$BOLD" "$1" "$NC"; hr; }
 
-    echo -e "${YELLOW}Stopping App3 (Analytics3)...${NC}"
-    pkill -f 'dotnet.*App3AnalyticsLoadGenerator' && echo -e "${GREEN}✓ App3 stopped${NC}" || echo -e "${YELLOW}⚠ App3 not running${NC}"
-
-    echo -e "${YELLOW}Stopping App4 (Analytics No APM)...${NC}"
-    pkill -f 'dotnet.*App4AnalyticsLoadGeneratorNoApm' && echo -e "${GREEN}✓ App4 stopped${NC}" || echo -e "${YELLOW}⚠ App4 not running${NC}"
-
-    echo "=========================================="
-    exit 0
-fi
-
-# Status mode
-if [[ "$1" == "--status" ]]; then
-    echo "=========================================="
-    echo "Application Status"
-    echo "=========================================="
-
-    APP1_PID=$(pgrep -f 'dotnet.*App1OltpLoadGenerator' || echo "")
-    APP2_PID=$(pgrep -f 'dotnet.*App2AnalyticsLoadGenerator' || echo "")
-    APP3_PID=$(pgrep -f 'dotnet.*App3AnalyticsLoadGenerator' || echo "")
-    APP4_PID=$(pgrep -f 'dotnet.*App4AnalyticsLoadGeneratorNoApm' || echo "")
-
-    if [ -n "$APP1_PID" ]; then
-        echo -e "${GREEN}✓ App1 (OLTP) running (PID: $APP1_PID, Port: 8080)${NC}"
-    else
-        echo -e "${RED}✗ App1 (OLTP) not running${NC}"
-    fi
-
-    if [ -n "$APP2_PID" ]; then
-        echo -e "${GREEN}✓ App2 (Analytics) running (PID: $APP2_PID, Port: 8081)${NC}"
-    else
-        echo -e "${RED}✗ App2 (Analytics) not running${NC}"
-    fi
-
-    if [ -n "$APP3_PID" ]; then
-        echo -e "${GREEN}✓ App3 (Analytics3) running (PID: $APP3_PID, Port: 8082)${NC}"
-    else
-        echo -e "${RED}✗ App3 (Analytics3) not running${NC}"
-    fi
-
-    if [ -n "$APP4_PID" ]; then
-        echo -e "${GREEN}✓ App4 (Analytics No APM) running (PID: $APP4_PID, Port: 8083)${NC}"
-    else
-        echo -e "${RED}✗ App4 (Analytics No APM) not running${NC}"
-    fi
-
-    echo "=========================================="
-    exit 0
-fi
-
-# Check if .NET SDK is installed
-if ! command -v dotnet &> /dev/null; then
-    echo -e "${RED}ERROR: .NET SDK is not installed${NC}"
-    echo "Please install .NET 8.0 SDK from https://dotnet.microsoft.com/download"
-    exit 1
-fi
-
-# Check if apps are already running
-echo "=========================================="
-echo "Checking for Running Applications"
-echo "=========================================="
-
-APP1_RUNNING=$(pgrep -f 'dotnet.*App1OltpLoadGenerator' || echo "")
-APP2_RUNNING=$(pgrep -f 'dotnet.*App2AnalyticsLoadGenerator' || echo "")
-APP3_RUNNING=$(pgrep -f 'dotnet.*App3AnalyticsLoadGenerator' || echo "")
-APP4_RUNNING=$(pgrep -f 'dotnet.*App4AnalyticsLoadGeneratorNoApm' || echo "")
-
-if [ -n "$APP1_RUNNING" ] || [ -n "$APP2_RUNNING" ] || [ -n "$APP3_RUNNING" ] || [ -n "$APP4_RUNNING" ]; then
-    echo -e "${YELLOW}Found running applications:${NC}"
-    [ -n "$APP1_RUNNING" ] && echo "  App1 (OLTP): PID $APP1_RUNNING"
-    [ -n "$APP2_RUNNING" ] && echo "  App2 (Analytics): PID $APP2_RUNNING"
-    [ -n "$APP3_RUNNING" ] && echo "  App3 (Analytics3): PID $APP3_RUNNING"
-    [ -n "$APP4_RUNNING" ] && echo "  App4 (Analytics No APM): PID $APP4_RUNNING"
-    echo ""
-    echo -e "${YELLOW}Stopping existing processes...${NC}"
-
-    [ -n "$APP1_RUNNING" ] && pkill -f 'dotnet.*App1OltpLoadGenerator' && echo -e "${GREEN}✓ Stopped App1${NC}"
-    [ -n "$APP2_RUNNING" ] && pkill -f 'dotnet.*App2AnalyticsLoadGenerator' && echo -e "${GREEN}✓ Stopped App2${NC}"
-    [ -n "$APP3_RUNNING" ] && pkill -f 'dotnet.*App3AnalyticsLoadGenerator' && echo -e "${GREEN}✓ Stopped App3${NC}"
-    [ -n "$APP4_RUNNING" ] && pkill -f 'dotnet.*App4AnalyticsLoadGeneratorNoApm' && echo -e "${GREEN}✓ Stopped App4${NC}"
-
-    # Wait for processes to fully terminate
-    sleep 2
-fi
-
-echo -e "${GREEN}✓ No running applications${NC}"
-echo ""
-
-# Check if .env files exist
-echo "=========================================="
-echo "Verifying Configuration Files"
-echo "=========================================="
-
-MISSING_ENV=0
-
-if [ ! -f "$APP1_DIR/.env" ]; then
-    echo -e "${RED}✗ $APP1_DIR/.env not found${NC}"
-    echo "  Copy .env.example to .env and configure it"
-    MISSING_ENV=1
-fi
-
-if [ ! -f "$APP2_DIR/.env" ]; then
-    echo -e "${RED}✗ $APP2_DIR/.env not found${NC}"
-    echo "  Copy .env.example to .env and configure it"
-    MISSING_ENV=1
-fi
-
-if [ ! -f "$APP3_DIR/.env" ]; then
-    echo -e "${RED}✗ $APP3_DIR/.env not found${NC}"
-    echo "  Copy .env.example to .env and configure it"
-    MISSING_ENV=1
-fi
-
-if [ ! -f "$APP4_DIR/.env" ]; then
-    echo -e "${RED}✗ $APP4_DIR/.env not found${NC}"
-    echo "  Copy .env.example to .env and configure it"
-    MISSING_ENV=1
-fi
-
-if [ $MISSING_ENV -eq 1 ]; then
-    echo ""
-    echo -e "${YELLOW}To create .env files quickly:${NC}"
-    echo "  cd $APP1_DIR && cp .env.example .env"
-    echo "  cd ../$APP2_DIR && cp .env.example .env"
-    echo "  cd ../$APP3_DIR && cp .env.example .env"
-    echo "  cd ../$APP4_DIR && cp .env.example .env"
-    echo ""
-    echo "Then edit each .env file with your database credentials and New Relic license key."
-    exit 1
-fi
-
-echo -e "${GREEN}✓ All .env files found${NC}"
-echo ""
-
-# Helper: build an app, then launch it in an isolated subshell so the New Relic
-# profiler environment variables never leak between apps. Pass apm=yes to attach
-# the agent (Apps 1-3); apm=no leaves the app uninstrumented (App4 baseline).
-# Usage: start_app <dir> <port> <yes|no>
-start_app() {
-    local dir="$1" port="$2" apm="$3"
-    echo "=========================================="
-    echo "Starting $dir (APM: $apm)"
-    echo "=========================================="
-
-    if ( cd "$ROOT_DIR/$dir" && dotnet build > /dev/null 2>&1 ); then
-        (
-            cd "$ROOT_DIR/$dir"
-            [ -f .env ] && export $(cat .env | grep -v '^#' | xargs)
-            if [ "$apm" = "yes" ]; then
-                source "$ROOT_DIR/newrelic-env.sh"
-                enable_newrelic "$PWD" || true
-            fi
-            exec dotnet run --no-build > /dev/null 2>&1
-        ) &
-        local pid=$!
-        echo -e "${BLUE}Started $dir with PID: $pid (Port: $port)${NC}"
-    else
-        echo -e "${RED}✗ Build failed for $dir — not started${NC}"
-    fi
-    echo ""
+# HTTP port for an app, read from its .env (falls back to "?")
+get_port() {
+  local p
+  p=$(grep -E '^API_PORT=' "$1/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '\r ')
+  printf '%s' "${p:-?}"
 }
 
-# Apps 1-3 are instrumented with New Relic; App4 is the no-APM baseline.
-start_app "$APP1_DIR" 8080 yes
-sleep 3
-start_app "$APP2_DIR" 8081 yes
-sleep 3
-start_app "$APP3_DIR" 8082 yes
-sleep 3
-start_app "$APP4_DIR" 8083 no
+# PID of a running app. The app runs as an apphost executable whose path
+# contains "<dir>/bin", so match on that (NOT "dotnet.*", which never matches
+# the apphost and gave false "not running" results).
+get_pid() { pgrep -f "$1/bin" 2>/dev/null | head -1; }
 
-# Wait for apps to start
-echo "Waiting for applications to initialize..."
-sleep 5
+print_row() {  # label apm port pid state color
+  printf '  %-30s %-4s %-7s %-8s %s%s%s\n' "$1" "$2" "$3" "$4" "$6" "$5" "$NC"
+}
 
-# Verify all apps are running
-echo "=========================================="
-echo "Verification"
-echo "=========================================="
+status_table() {
+  print_row "APP" "APM" "PORT" "PID" "STATE" ""
+  hr
+  local dir label apm port pid
+  for entry in "${APPS[@]}"; do
+    IFS='|' read -r dir label apm <<< "$entry"
+    port=$(get_port "$dir"); pid=$(get_pid "$dir")
+    if [ -n "$pid" ]; then
+      print_row "$label" "$apm" "$port" "$pid" "running" "$GREEN"
+    else
+      print_row "$label" "$apm" "$port" "-" "stopped" "$RED"
+    fi
+  done
+}
 
-APP1_CHECK=$(pgrep -f 'dotnet.*App1OltpLoadGenerator' || echo "")
-APP2_CHECK=$(pgrep -f 'dotnet.*App2AnalyticsLoadGenerator' || echo "")
-APP3_CHECK=$(pgrep -f 'dotnet.*App3AnalyticsLoadGenerator' || echo "")
-APP4_CHECK=$(pgrep -f 'dotnet.*App4AnalyticsLoadGeneratorNoApm' || echo "")
-
-FAILED=0
-
-if [ -n "$APP1_CHECK" ]; then
-    echo -e "${GREEN}✓ App1 running (PID: $APP1_CHECK) - http://localhost:8080${NC}"
-else
-    echo -e "${RED}✗ App1 failed to start${NC}"
-    FAILED=1
+# ---------------------------------------------------------------- stop
+if [ "${1:-}" = "--stop" ]; then
+  title "Stopping all applications"
+  for entry in "${APPS[@]}"; do
+    IFS='|' read -r dir label apm <<< "$entry"
+    pid=$(get_pid "$dir")
+    if [ -n "$pid" ]; then
+      pkill -f "$dir/bin" 2>/dev/null
+      printf '  %s✓%s %-30s stopped (was PID %s)\n' "$GREEN" "$NC" "$label" "$pid"
+    else
+      printf '  %s•%s %-30s not running\n' "$YELLOW" "$NC" "$label"
+    fi
+  done
+  echo
+  exit 0
 fi
 
-if [ -n "$APP2_CHECK" ]; then
-    echo -e "${GREEN}✓ App2 running (PID: $APP2_CHECK) - http://localhost:8081${NC}"
-else
-    echo -e "${RED}✗ App2 failed to start${NC}"
-    FAILED=1
+# ---------------------------------------------------------------- status
+if [ "${1:-}" = "--status" ]; then
+  title "Application status"
+  status_table
+  echo
+  exit 0
 fi
 
-if [ -n "$APP3_CHECK" ]; then
-    echo -e "${GREEN}✓ App3 running (PID: $APP3_CHECK) - http://localhost:8082${NC}"
-else
-    echo -e "${RED}✗ App3 failed to start${NC}"
-    FAILED=1
+# ---------------------------------------------------------------- start
+if ! command -v dotnet &>/dev/null; then
+  printf '%sERROR: .NET SDK not found — install the .NET 8 SDK.%s\n' "$RED" "$NC"
+  exit 1
 fi
 
-if [ -n "$APP4_CHECK" ]; then
-    echo -e "${GREEN}✓ App4 running (PID: $APP4_CHECK) - http://localhost:8083${NC}"
-else
-    echo -e "${RED}✗ App4 failed to start${NC}"
-    FAILED=1
+title "APM Load Generator — starting all apps"
+
+# Stop anything already running so ports are free.
+for entry in "${APPS[@]}"; do
+  IFS='|' read -r dir label apm <<< "$entry"
+  pid=$(get_pid "$dir")
+  if [ -n "$pid" ]; then
+    pkill -f "$dir/bin" 2>/dev/null
+    printf '  %s•%s stopped stale %s (PID %s)\n' "$YELLOW" "$NC" "$label" "$pid"
+  fi
+done
+
+# Verify .env files exist.
+missing=0
+for entry in "${APPS[@]}"; do
+  IFS='|' read -r dir label apm <<< "$entry"
+  if [ ! -f "$dir/.env" ]; then
+    printf '  %s✗%s %s/.env missing — run: cp %s/.env.example %s/.env\n' "$RED" "$NC" "$dir" "$dir" "$dir"
+    missing=1
+  fi
+done
+if [ "$missing" = 1 ]; then
+  printf '\nCreate the missing .env file(s) with your DB creds + New Relic key, then re-run.\n'
+  exit 1
 fi
 
-echo "=========================================="
-echo ""
+# Build + launch one app. The launch runs in an isolated subshell so the
+# New Relic profiler env vars never leak between apps (that isolation is what
+# keeps App4 uninstrumented).
+start_app() {
+  local dir="$1" label="$2" apm="$3" port; port=$(get_port "$dir")
+  printf '\n%s▶ %s%s  (APM: %s · port %s)\n' "$CYAN" "$label" "$NC" "$apm" "$port"
+  if ! ( cd "$ROOT_DIR/$dir" && dotnet build >/dev/null 2>&1 ); then
+    printf '  %s✗ build failed — not started%s\n' "$RED" "$NC"
+    return 0
+  fi
+  (
+    cd "$ROOT_DIR/$dir"
+    [ -f .env ] && export $(grep -v '^#' .env | xargs)
+    if [ "$apm" = "yes" ]; then
+      source "$ROOT_DIR/newrelic-env.sh"
+      enable_newrelic "$PWD" >/dev/null 2>&1 || true
+    fi
+    exec dotnet run --no-build >/dev/null 2>&1
+  ) &
+  printf '  %s✓ launched%s (PID %s)\n' "$GREEN" "$NC" "$!"
+}
 
-if [ $FAILED -eq 0 ]; then
-    echo -e "${GREEN}✓ All applications started successfully!${NC}"
-    echo ""
-    echo "Load generation has begun. Check:"
-    echo "  • New Relic UI for APM data (Apps 1, 2, 3)"
-    echo "  • Database connections: ps aux | grep dotnet"
-    echo "  • Application logs in each app directory"
+for entry in "${APPS[@]}"; do
+  IFS='|' read -r dir label apm <<< "$entry"
+  start_app "$dir" "$label" "$apm"
+  sleep 3
+done
+
+printf '\n%sWaiting for apps to initialize...%s\n' "$YELLOW" "$NC"
+sleep 6
+
+title "Verification"
+status_table
+
+# Overall result + URLs
+failed=0
+for entry in "${APPS[@]}"; do
+  IFS='|' read -r dir label apm <<< "$entry"
+  [ -z "$(get_pid "$dir")" ] && failed=1
+done
+echo
+if [ "$failed" = 0 ]; then
+  printf '%s✓ All applications are running.%s\n' "$GREEN" "$NC"
 else
-    echo -e "${RED}⚠ Some applications failed to start${NC}"
-    echo "Check logs in each application directory for errors"
+  printf '%s⚠ Some apps are not running.%s Run one in the foreground to see the error:\n' "$RED" "$NC"
+  printf '    cd <AppDir> && ./run.sh\n'
 fi
 
-echo ""
-echo "Useful Commands:"
-echo "  Status:        ./runAllApps.sh --status"
-echo "  Stop apps:     ./runAllApps.sh --stop"
-echo "  Monitor CPU:   watch -n 2 'ps aux | head -1 && ps aux | grep -E \"dotnet.*App[1-4]\" | grep -v grep'"
-echo "  Check ports:   lsof -i :8080-8083"
-echo ""
-echo "Note: Logs are redirected to /dev/null to save disk space"
-echo "      Monitor via New Relic UI for transaction data"
-echo ""
-echo "=========================================="
+cat <<EOF
+
+Endpoints:
+$(for entry in "${APPS[@]}"; do IFS='|' read -r dir label apm <<< "$entry"; printf '  %-30s http://localhost:%s\n' "$label" "$(get_port "$dir")"; done)
+
+Commands:
+  Status    ./runAllApps.sh --status
+  Stop all  ./runAllApps.sh --stop
+  Processes ps aux | grep -E 'App[1-4].*/bin' | grep -v grep
+
+New Relic UI → APM & Services: App1/App2/App3 report; App4 is the no-APM baseline.
+App logs go to /dev/null — monitor throughput and database activity in New Relic.
+EOF
